@@ -1,0 +1,5 @@
+{
+  "supplierRoot": "C:\\path\\to\\account-library",
+  "pollIntervalSeconds": 30,
+  "linePollIntervalSeconds": 120
+}

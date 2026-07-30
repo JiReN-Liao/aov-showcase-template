@@ -1,0 +1,12 @@
+name = "your-aov-showcase"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-07-09"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "your-database-name"
+database_id = "YOUR_D1_DATABASE_ID"
+
+[[kv_namespaces]]
+binding = "AOV_STORE"
+id = "YOUR_KV_NAMESPACE_ID"

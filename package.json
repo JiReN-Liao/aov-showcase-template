@@ -1,0 +1,43 @@
+{
+  "name": "aov-account-showcase",
+  "private": true,
+  "version": "1.0.0",
+  "description": "A privacy-conscious Arena of Valor account showcase built with React and Cloudflare.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "oxlint",
+    "test": "node --test",
+    "smoke:api": "node scripts/smoke-api.mjs",
+    "smoke:image-delete": "node scripts/smoke-image-delete.mjs",
+    "admin": "node scripts/aov-admin.mjs",
+    "library": "node scripts/aov-library.mjs",
+    "sync": "node scripts/sync-agent.mjs",
+    "line:setup": "python -m venv .venv-sync && .venv-sync\\Scripts\\python.exe -m pip install -r scripts/line-sync/requirements.txt",
+    "line:probe": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-line-sync.ps1 probe",
+    "prices:setup": "python -m venv .venv-price && .venv-price\\Scripts\\python.exe -m pip install -r scripts/price-recognition/requirements.txt",
+    "prices:scan": "node scripts/scan-prices.mjs",
+    "prices:classify": "node scripts/classify-price-report.mjs",
+    "prices:fingerprints": "node scripts/build-price-fingerprints.mjs",
+    "prices:styles": "node scripts/build-price-style-registry.mjs",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "lucide-react": "^1.24.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "simple-icons": "^16.25.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "autoprefixer": "^10.5.2",
+    "oxlint": "^1.71.0",
+    "postcss": "^8.5.25",
+    "tailwindcss": "^3.4.19",
+    "vite": "^8.1.1"
+  }
+}
