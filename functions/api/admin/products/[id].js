@@ -1,7 +1,7 @@
 import { requireAdmin } from '../../../_lib/auth.js'
 import { writeAudit } from '../../../_lib/audit.js'
 import { errorResponse, json, readJson } from '../../../_lib/http.js'
-import { expectedVersion, mapProduct, normalizeProductInput } from '../../../_lib/products.js'
+import { expectedVersion, mapProduct, nextPublishedAt, normalizeProductInput } from '../../../_lib/products.js'
 import { ensurePublishableProduct, isPublicStatus, productInputFromRow } from '../../../_lib/uploads.js'
 
 export async function onRequestPatch({ request, params, env }) {
@@ -29,9 +29,10 @@ export async function onRequestPatch({ request, params, env }) {
   }
 
   const updatedAt = new Date().toISOString()
+  const publishedAt = nextPublishedAt(current.status, normalized.status, current.published_at, updatedAt)
   const result = await env.DB.prepare(
-    'UPDATE products SET code = ?1, title = ?2, description = ?3, price = ?4, status = ?5, note = ?6, image_key = ?7, sort_order = ?8, updated_at = ?9, version = version + 1 WHERE id = ?10 AND version = ?11 AND deleted_at IS NULL',
-  ).bind(normalized.code, normalized.title, normalized.description, normalized.price, normalized.status, normalized.note, normalized.imageKey, normalized.sortOrder, updatedAt, id, version).run()
+    'UPDATE products SET code = ?1, title = ?2, description = ?3, price = ?4, status = ?5, note = ?6, image_key = ?7, sort_order = ?8, published_at = ?9, updated_at = ?10, version = version + 1 WHERE id = ?11 AND version = ?12 AND deleted_at IS NULL',
+  ).bind(normalized.code, normalized.title, normalized.description, normalized.price, normalized.status, normalized.note, normalized.imageKey, normalized.sortOrder, publishedAt, updatedAt, id, version).run()
   if (Number(result.meta?.changes || 0) !== 1) return errorResponse('Product has changed. Reload before updating.', 409, 'VERSION_CONFLICT')
 
   await writeAudit(env, {

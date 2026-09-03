@@ -1,7 +1,7 @@
 import { requireAdmin } from '../../../_lib/auth.js'
 import { writeAudit } from '../../../_lib/audit.js'
 import { errorResponse, json, readJson } from '../../../_lib/http.js'
-import { expectedVersion, normalizeProductInput } from '../../../_lib/products.js'
+import { expectedVersion, nextPublishedAt, normalizeProductInput } from '../../../_lib/products.js'
 import { ensurePublishableProduct, isPublicStatus, productInputFromRow } from '../../../_lib/uploads.js'
 
 // Batch writes preserve the same optimistic-lock contract as the single-product API.
@@ -28,9 +28,10 @@ export async function onRequestPatch({ request, env }) {
       if (current.version !== version) throw new Error(`Product ${id} has changed. Reload before updating.`)
       const product = normalizeProductInput({ ...productInputFromRow(current), ...operation.patch, id })
       if (isPublicStatus(product.status)) await ensurePublishableProduct(env, product)
+      const publishedAt = nextPublishedAt(current.status, product.status, current.published_at, now)
       statements.push(env.DB.prepare(
-        'UPDATE products SET code = ?1, title = ?2, description = ?3, price = ?4, status = ?5, note = ?6, image_key = ?7, sort_order = ?8, updated_at = ?9, version = version + 1 WHERE id = ?10 AND version = ?11 AND deleted_at IS NULL',
-      ).bind(product.code, product.title, product.description, product.price, product.status, product.note, product.imageKey, product.sortOrder, now, id, version))
+        'UPDATE products SET code = ?1, title = ?2, description = ?3, price = ?4, status = ?5, note = ?6, image_key = ?7, sort_order = ?8, published_at = ?9, updated_at = ?10, version = version + 1 WHERE id = ?11 AND version = ?12 AND deleted_at IS NULL',
+      ).bind(product.code, product.title, product.description, product.price, product.status, product.note, product.imageKey, product.sortOrder, publishedAt, now, id, version))
       statements.push(env.DB.prepare(
         'INSERT INTO audit_logs (id, actor_id, action, entity_type, entity_id, version_before, version_after, metadata_json, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)',
       ).bind(crypto.randomUUID(), auth.id, 'product.batch_update', 'product', id, version, version + 1, JSON.stringify({ fields: Object.keys(operation.patch) }), now))

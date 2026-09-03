@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Clock,
   ExternalLink,
   ImagePlus,
   LoaderCircle,
@@ -48,6 +49,7 @@ import {
   updateProductStatus,
 } from './storage'
 import { createVisualHash } from './image-similarity'
+import { isTodayStock, publishedTimestamp } from './product-freshness'
 import BlurText from './components/BlurText'
 import AccountCarousel from './components/AccountCarousel'
 import DynamicVeil from './components/DynamicVeil'
@@ -62,6 +64,7 @@ const STATUSES = {
 
 const PUBLIC_STATUSES = ['available']
 const currency = new Intl.NumberFormat('zh-TW')
+const publishedDateTime = new Intl.DateTimeFormat('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
 const ADMIN_SESSION_KEY = 'aov-marketplace:admin-session:v1'
 const HOME_STATE_KEY = 'aov-marketplace:home-state:v1'
 const UPLOAD_CONCURRENCY = 4
@@ -75,12 +78,18 @@ export default function App() {
   const [route, setRoute] = useState(() => parseRoute(window.location.hash))
   const [adminToken, setAdminToken] = useState(() => sessionStorage.getItem(ADMIN_SESSION_KEY) || '')
   const [cloudError, setCloudError] = useState('')
+  const [clock, setClock] = useState(() => Date.now())
   const isAdmin = Boolean(adminToken)
 
   useEffect(() => {
     const onHashChange = () => setRoute(parseRoute(window.location.hash))
     window.addEventListener('hashchange', onHashChange)
     return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(Date.now()), 60_000)
+    return () => window.clearInterval(timer)
   }, [])
 
   useEffect(() => {
@@ -121,7 +130,7 @@ export default function App() {
     })
   }
 
-  const pageProps = { products, settings, setProducts, setSettings, cloudError }
+  const pageProps = { products, settings, setProducts, setSettings, cloudError, clock }
   const loginAdminSession = (token) => {
     sessionStorage.setItem(ADMIN_SESSION_KEY, token)
     setAdminToken(token)
@@ -389,7 +398,7 @@ function ContactPage({ settings }) {
   )
 }
 
-function CatalogPage({ products, settings }) {
+function CatalogPage({ products, settings, clock }) {
   const initialState = useRef(readHomeState())
   const restoredScroll = useRef(false)
   const filtersInitialized = useRef(false)
@@ -399,10 +408,11 @@ function CatalogPage({ products, settings }) {
   const [maxPrice, setMaxPrice] = useState(initialState.current.maxPrice)
   const [sort, setSort] = useState(initialState.current.sort)
   const [page, setPage] = useState(initialState.current.page)
+  const [todayOnly, setTodayOnly] = useState(Boolean(initialState.current.todayOnly))
 
   useEffect(() => {
-    saveHomeState({ query, minPrice, maxPrice, sort, page })
-  }, [query, minPrice, maxPrice, sort, page])
+    saveHomeState({ query, minPrice, maxPrice, sort, page, todayOnly })
+  }, [query, minPrice, maxPrice, sort, page, todayOnly])
 
   useEffect(() => {
     if (!filtersInitialized.current) {
@@ -410,7 +420,7 @@ function CatalogPage({ products, settings }) {
       return
     }
     setPage(1)
-  }, [query, minPrice, maxPrice, sort])
+  }, [query, minPrice, maxPrice, sort, todayOnly])
 
   useEffect(() => {
     if (restoredScroll.current || !products.length) return
@@ -418,7 +428,7 @@ function CatalogPage({ products, settings }) {
     requestAnimationFrame(() => window.scrollTo({ top: initialState.current.scrollY, behavior: 'auto' }))
   }, [products.length])
 
-  const rememberCatalogPosition = (productId) => saveHomeState({ query, minPrice, maxPrice, sort, page, scrollY: window.scrollY, lastProductId: productId })
+  const rememberCatalogPosition = (productId) => saveHomeState({ query, minPrice, maxPrice, sort, page, todayOnly, scrollY: window.scrollY, lastProductId: productId })
 
   const visibleProducts = useMemo(() => {
     const search = query.trim().toLowerCase()
@@ -429,23 +439,25 @@ function CatalogPage({ products, settings }) {
         const price = Number(product.price)
         const hasPriceFilter = Boolean(minPrice || maxPrice)
         const matchesPrice = (!hasPriceFilter || price > 0) && (!minPrice || price >= Number(minPrice)) && (!maxPrice || price <= Number(maxPrice))
-        return (!search || target.includes(search)) && matchesPrice
+        const matchesToday = !todayOnly || isTodayStock(product, clock)
+        return (!search || target.includes(search)) && matchesPrice && matchesToday
       })
 
     return filtered.sort((a, b) => {
       if (sort === 'priceAsc') return (Number(a.price) || Number.MAX_SAFE_INTEGER) - (Number(b.price) || Number.MAX_SAFE_INTEGER)
       if (sort === 'priceDesc') return Number(b.price || 0) - Number(a.price || 0)
-      if (sort === 'newest') return new Date(b.createdAt) - new Date(a.createdAt)
+      if (sort === 'newest') return publishedTimestamp(b) - publishedTimestamp(a)
       return Number(a.sortOrder || 0) - Number(b.sortOrder || 0) || a.code.localeCompare(b.code)
     })
-  }, [products, query, minPrice, maxPrice, sort])
+  }, [products, query, minPrice, maxPrice, sort, todayOnly, clock])
 
   const publicProducts = products.filter((product) => PUBLIC_STATUSES.includes(product.status))
   const publicProductCount = publicProducts.length
+  const todayProductCount = publicProducts.filter((product) => isTodayStock(product, clock)).length
   const pageCount = Math.max(1, Math.ceil(visibleProducts.length / CATALOG_PAGE_SIZE))
   const currentPage = Math.min(Math.max(1, page), pageCount)
   const pageProducts = visibleProducts.slice((currentPage - 1) * CATALOG_PAGE_SIZE, currentPage * CATALOG_PAGE_SIZE)
-  const hasFilters = Boolean(query || minPrice || maxPrice || sort !== 'default')
+  const hasFilters = Boolean(query || minPrice || maxPrice || sort !== 'default' || todayOnly)
 
   useEffect(() => {
     if (page !== currentPage) setPage(currentPage)
@@ -456,6 +468,7 @@ function CatalogPage({ products, settings }) {
     setMinPrice('')
     setMaxPrice('')
     setSort('default')
+    setTodayOnly(false)
     setPage(1)
   }
 
@@ -482,6 +495,14 @@ function CatalogPage({ products, settings }) {
       <AccountCarousel products={publicProducts} ImageComponent={StoredImage} formatPrice={formatPrice} onOpen={rememberCatalogPosition} />
 
       <section ref={catalogTop} className="motion-reveal mb-6 border-b border-zinc-800 py-4 sm:py-5" style={{ '--reveal-delay': '80ms' }}>
+        <div className="mb-3 inline-flex rounded border border-zinc-700 bg-zinc-950 p-1" role="group" aria-label="現貨類型">
+          <button type="button" aria-pressed={!todayOnly} onClick={() => setTodayOnly(false)} className={`h-10 rounded px-3 text-sm font-black transition ${!todayOnly ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-400 hover:bg-zinc-900 hover:text-white'}`}>
+            全部現貨 <span className="ml-1 tabular-nums opacity-70">{publicProductCount}</span>
+          </button>
+          <button type="button" aria-pressed={todayOnly} onClick={() => setTodayOnly(true)} className={`inline-flex h-10 items-center gap-1.5 rounded px-3 text-sm font-black transition ${todayOnly ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-400 hover:bg-zinc-900 hover:text-white'}`}>
+            <Clock size={14} />今日現貨 <span className="tabular-nums opacity-70">{todayProductCount}</span>
+          </button>
+        </div>
         <div className="grid gap-3 lg:grid-cols-[minmax(20rem,1fr)_minmax(20rem,auto)_12rem_auto]">
           <label className="relative block">
             <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={17} />
@@ -521,12 +542,12 @@ function CatalogPage({ products, settings }) {
       {visibleProducts.length ? (
         <>
           <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-            {pageProducts.map((product, index) => <ProductCard key={product.id} product={product} settings={settings} onOpen={rememberCatalogPosition} index={index} />)}
+            {pageProducts.map((product, index) => <ProductCard key={product.id} product={product} settings={settings} onOpen={rememberCatalogPosition} index={index} today={isTodayStock(product, clock)} />)}
           </section>
           {pageCount > 1 && <CatalogPagination page={currentPage} pageCount={pageCount} onChange={goToPage} />}
         </>
       ) : (
-        <EmptyState title="目前沒有符合條件的商品" text="可以調整商品編號或價格範圍後再看看。" />
+        <EmptyState title="目前沒有符合條件的商品" text="可以切換全部現貨，或調整商品編號與價格範圍後再看看。" />
       )}
       <StoreFooter settings={settings} />
       <FloatingContacts settings={settings} />
@@ -608,11 +629,12 @@ function contactBrand(method) {
   return { label: 'LINE', icon: siLine }
 }
 
-function ProductCard({ product, settings, onOpen, index = 0 }) {
+function ProductCard({ product, settings, onOpen, index = 0, today = false }) {
   return (
     <SpotlightCard as="article" className="product-card motion-reveal overflow-hidden rounded border border-zinc-800 bg-zinc-950 shadow-[0_3px_9px_rgba(0,0,0,0.16)]" style={{ '--reveal-delay': `${Math.min(index, 8) * 45}ms` }}>
       <a href={`#/product/${product.id}`} onClick={() => onOpen(product.id)} className="relative block aspect-square bg-black p-1.5">
         <StoredImage imageKey={product.imageKey} imageUrl={product.imageUrl} alt={product.code} className="product-card-image h-full w-full object-contain" />
+        {today && <TodayStockBadge className="absolute left-2 top-2 z-10 bg-black/85" />}
       </a>
       <div className="space-y-2 p-2.5">
         <div className="flex items-center justify-between gap-2">
@@ -627,7 +649,7 @@ function ProductCard({ product, settings, onOpen, index = 0 }) {
   )
 }
 
-function DetailPage({ products, settings, productId }) {
+function DetailPage({ products, settings, productId, clock }) {
   const [previewOpen, setPreviewOpen] = useState(false)
   const product = products.find((item) => item.id === productId)
   const returnToCatalog = () => {
@@ -657,7 +679,10 @@ function DetailPage({ products, settings, productId }) {
               <p className="text-sm text-zinc-400">商品編號</p>
               <h1 className="text-2xl font-black">{product.code}</h1>
             </div>
-            <StatusChip status={product.status} />
+            <div className="flex flex-wrap justify-end gap-1.5">
+              {isTodayStock(product, clock) && <TodayStockBadge />}
+              <StatusChip status={product.status} />
+            </div>
           </div>
           {product.title && <p className="text-lg font-bold text-zinc-200">{product.title}</p>}
           {formatPrice(product.price) && <p className="text-3xl font-black tabular-nums text-zinc-100">{formatPrice(product.price)}</p>}
@@ -675,7 +700,7 @@ function DetailPage({ products, settings, productId }) {
   )
 }
 
-function AdminPage({ products, settings, setProducts, adminToken, cloudError }) {
+function AdminPage({ products, settings, setProducts, adminToken, cloudError, clock }) {
   const [message, setMessage] = useState('')
   const [previewProduct, setPreviewProduct] = useState(null)
   const [uploads, setUploads] = useState([])
@@ -707,7 +732,7 @@ function AdminPage({ products, settings, setProducts, adminToken, cloudError }) 
       const result = await operation(version)
       if (result.product) {
         versions.current.set(id, result.product.version)
-        setProducts((current) => current.map((product) => (product.id === id ? { ...product, version: result.product.version, updatedAt: result.product.updatedAt } : product)))
+        setProducts((current) => current.map((product) => (product.id === id ? { ...product, ...result.product } : product)))
       }
       return result
     }).catch((error) => {
@@ -1197,7 +1222,7 @@ function AdminPage({ products, settings, setProducts, adminToken, cloudError }) 
 
       {products.length ? (
         <section className="overflow-x-auto border-y border-zinc-800">
-          <table className="w-full min-w-[980px] text-left text-sm">
+          <table className="w-full min-w-[1080px] text-left text-sm">
             <thead className="bg-zinc-900 text-xs uppercase text-zinc-400">
               <tr>
                 <th className="w-16 px-2 py-2">
@@ -1210,6 +1235,7 @@ function AdminPage({ products, settings, setProducts, adminToken, cloudError }) 
                 <th className="px-3 py-3">標題</th>
                 <th className="px-3 py-3">價格</th>
                 <th className="px-3 py-3">狀態</th>
+                <th className="px-3 py-3">上架時間</th>
                 <th className="px-3 py-3">備註</th>
                 <th className="px-3 py-3">排序</th>
                 <th className="px-3 py-3">操作</th>
@@ -1217,7 +1243,7 @@ function AdminPage({ products, settings, setProducts, adminToken, cloudError }) 
             </thead>
             <tbody className="divide-y divide-zinc-800">
               {products.slice().sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0)).map((product) => (
-                <AdminRow key={product.id} product={product} selected={selectedIds.has(product.id)} toggleSelected={toggleSelected} updateProduct={updateProduct} removeProduct={removeProduct} openPreview={setPreviewProduct} recognizePrice={recognizeOneProduct} recognizing={recognizingProductId === product.id} recognitionDisabled={isRecognizing || Boolean(recognizingProductId)} />
+                <AdminRow key={product.id} product={product} selected={selectedIds.has(product.id)} toggleSelected={toggleSelected} updateProduct={updateProduct} removeProduct={removeProduct} openPreview={setPreviewProduct} recognizePrice={recognizeOneProduct} recognizing={recognizingProductId === product.id} recognitionDisabled={isRecognizing || Boolean(recognizingProductId)} clock={clock} />
               ))}
             </tbody>
           </table>
@@ -1237,7 +1263,7 @@ function AdminPage({ products, settings, setProducts, adminToken, cloudError }) 
   )
 }
 
-function AdminRow({ product, selected, toggleSelected, updateProduct, removeProduct, openPreview, recognizePrice, recognizing, recognitionDisabled }) {
+function AdminRow({ product, selected, toggleSelected, updateProduct, removeProduct, openPreview, recognizePrice, recognizing, recognitionDisabled, clock }) {
   return (
     <tr className="align-top">
       <td className="px-2 py-3">
@@ -1264,6 +1290,14 @@ function AdminRow({ product, selected, toggleSelected, updateProduct, removeProd
           {Object.entries(STATUSES).map(([value, meta]) => <option key={value} value={value}>{meta.label}</option>)}
           <option value="delete">刪除</option>
         </select>
+      </td>
+      <td className="px-3 py-3">
+        {product.publishedAt ? (
+          <div className="space-y-1.5 whitespace-nowrap">
+            {isTodayStock(product, clock) && <TodayStockBadge />}
+            <time className="block text-xs tabular-nums text-zinc-500" dateTime={product.publishedAt}>{formatPublishedAt(product.publishedAt)}</time>
+          </div>
+        ) : <span className="text-zinc-700">—</span>}
       </td>
       <td className="px-3 py-3"><textarea className="h-24 w-52 resize-none rounded-md border border-zinc-700 bg-zinc-900 px-2 py-2" value={product.note} onChange={(event) => updateProduct(product.id, { note: event.target.value })} /></td>
       <td className="px-3 py-3"><input className="w-20 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-2" inputMode="numeric" value={product.sortOrder} onChange={(event) => updateProduct(product.id, { sortOrder: event.target.value.replace(/[^\d]/g, '') })} /></td>
@@ -1521,6 +1555,10 @@ function StatusChip({ status }) {
   return <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-black ${meta.chip}`}>{meta.label}</span>
 }
 
+function TodayStockBadge({ className = '' }) {
+  return <span className={`inline-flex shrink-0 items-center gap-1 rounded border border-zinc-500 px-1.5 py-0.5 text-[10px] font-black text-zinc-100 ${className}`}><Clock size={10} />今日現貨</span>
+}
+
 function ContactButton({ product, settings, compact = false }) {
   const [open, setOpen] = useState(false)
   const methods = getContactMethods(settings)
@@ -1697,8 +1735,13 @@ function formatPrice(price) {
   return value > 0 ? `NT$${currency.format(value)}` : ''
 }
 
+function formatPublishedAt(value) {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '時間未知' : publishedDateTime.format(date)
+}
+
 function readHomeState() {
-  const fallback = { query: '', minPrice: '', maxPrice: '', sort: 'default', page: 1, scrollY: 0, lastProductId: '' }
+  const fallback = { query: '', minPrice: '', maxPrice: '', sort: 'default', todayOnly: false, page: 1, scrollY: 0, lastProductId: '' }
   try {
     return { ...fallback, ...JSON.parse(sessionStorage.getItem(HOME_STATE_KEY) || '{}') }
   } catch {

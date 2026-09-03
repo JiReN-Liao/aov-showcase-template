@@ -7,6 +7,7 @@ test('public catalog query filters statuses and does not select notes', async ()
   const products = await getPublicProducts({ DB: { prepare(value) { query = value; return { all: async () => ({ results: [] }) } } } })
   assert.deepEqual(products, [])
   assert.match(query, /status = 'available'/)
+  assert.match(query, /\bpublished_at\b/)
   assert.doesNotMatch(query, /\bnote\b/)
 })
 

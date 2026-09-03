@@ -1,7 +1,7 @@
 import { requireAdmin } from '../../../../_lib/auth.js'
 import { writeAudit } from '../../../../_lib/audit.js'
 import { errorResponse, json, readJson } from '../../../../_lib/http.js'
-import { ALL_STATUSES, expectedVersion, mapProduct } from '../../../../_lib/products.js'
+import { ALL_STATUSES, expectedVersion, mapProduct, nextPublishedAt } from '../../../../_lib/products.js'
 import { ensurePublishableProduct, isPublicStatus, productInputFromRow } from '../../../../_lib/uploads.js'
 
 export async function onRequestPost({ request, params, env }) {
@@ -22,9 +22,11 @@ export async function onRequestPost({ request, params, env }) {
   } catch (error) {
     return errorResponse(error.message, 409, 'IMAGE_NOT_READY')
   }
+  const now = new Date().toISOString()
+  const publishedAt = nextPublishedAt(currentProduct.status, status, currentProduct.published_at, now)
   const result = await env.DB.prepare(
-    'UPDATE products SET status = ?1, updated_at = ?2, version = version + 1 WHERE id = ?3 AND version = ?4 AND deleted_at IS NULL',
-  ).bind(status, new Date().toISOString(), id, version).run()
+    'UPDATE products SET status = ?1, published_at = ?2, updated_at = ?3, version = version + 1 WHERE id = ?4 AND version = ?5 AND deleted_at IS NULL',
+  ).bind(status, publishedAt, now, id, version).run()
   if (Number(result.meta?.changes || 0) !== 1) {
     const current = await env.DB.prepare('SELECT version FROM products WHERE id = ?1').bind(id).first()
     return current ? errorResponse('Product has changed. Reload before updating status.', 409, 'VERSION_CONFLICT') : errorResponse('Product not found.', 404, 'PRODUCT_NOT_FOUND')

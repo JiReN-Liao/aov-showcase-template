@@ -1,6 +1,6 @@
 import { requireAdmin } from '../../../_lib/auth.js'
 import { errorResponse, json, readJson } from '../../../_lib/http.js'
-import { getAdminProducts, mapProduct, normalizeProductInput } from '../../../_lib/products.js'
+import { getAdminProducts, mapProduct, nextPublishedAt, normalizeProductInput } from '../../../_lib/products.js'
 import { ensurePublishableProduct, isPublicStatus } from '../../../_lib/uploads.js'
 
 export async function onRequestGet({ request, env }) {
@@ -28,10 +28,14 @@ export async function onRequestPost({ request, env }) {
 
   const now = new Date().toISOString()
   const statements = []
-  for (const product of products) {
+  const rows = products.map((product) => ({
+    product,
+    publishedAt: nextPublishedAt(null, product.status, null, now),
+  }))
+  for (const { product, publishedAt } of rows) {
     statements.push(env.DB.prepare(
-      'INSERT INTO products (id, code, title, description, price, status, note, image_key, sort_order, created_at, updated_at, version) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10, 1)',
-    ).bind(product.id, product.code, product.title, product.description, product.price, product.status, product.note, product.imageKey, product.sortOrder, now))
+      'INSERT INTO products (id, code, title, description, price, status, note, image_key, sort_order, created_at, updated_at, published_at, version) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10, ?11, 1)',
+    ).bind(product.id, product.code, product.title, product.description, product.price, product.status, product.note, product.imageKey, product.sortOrder, now, publishedAt))
     statements.push(env.DB.prepare(
       'INSERT INTO audit_logs (id, actor_id, action, entity_type, entity_id, version_before, version_after, metadata_json, created_at) VALUES (?1, ?2, ?3, ?4, ?5, NULL, 1, ?6, ?7)',
     ).bind(crypto.randomUUID(), auth.id, 'product.create', 'product', product.id, JSON.stringify({ code: product.code }), now))
@@ -43,12 +47,13 @@ export async function onRequestPost({ request, env }) {
     return errorResponse('One or more products conflict with an existing id or code.', 409, 'PRODUCT_CREATE_CONFLICT')
   }
 
-  return json({ products: products.map((product) => mapProduct({
+  return json({ products: rows.map(({ product, publishedAt }) => mapProduct({
     ...product,
     image_key: product.imageKey,
     sort_order: product.sortOrder,
     created_at: now,
     updated_at: now,
+    published_at: publishedAt,
     version: 1,
     deleted_at: null,
   })) }, { status: 201 })

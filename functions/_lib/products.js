@@ -27,6 +27,7 @@ export function mapProduct(row, publicOnly = false) {
     sortOrder: row.sort_order || 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    publishedAt: row.published_at || null,
     version: row.version || 1,
   }
 
@@ -62,9 +63,14 @@ export async function getAdminProducts(env) {
 
 export async function getPublicProducts(env) {
   const result = await env.DB.prepare(
-    "SELECT id, code, title, description, price, status, image_key, sort_order, created_at, updated_at, version FROM products WHERE deleted_at IS NULL AND status = 'available' ORDER BY sort_order ASC, code ASC",
+    "SELECT id, code, title, description, price, status, image_key, sort_order, created_at, updated_at, published_at, version FROM products WHERE deleted_at IS NULL AND status = 'available' ORDER BY sort_order ASC, code ASC",
   ).all()
   return (result.results || []).map((row) => mapProduct(row, true))
+}
+
+export function nextPublishedAt(currentStatus, nextStatus, currentPublishedAt, now) {
+  if (nextStatus === 'available' && currentStatus !== 'available') return now
+  return currentPublishedAt || null
 }
 
 export function normalizeProductInput(input, fallback = {}) {

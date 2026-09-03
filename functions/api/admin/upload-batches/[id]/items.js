@@ -75,6 +75,7 @@ export async function onRequestPost({ request, params, env }) {
         sort_order: item.sortOrder,
         created_at: now,
         updated_at: now,
+        published_at: null,
         version: 1,
         object_key: item.imageKey,
         upload_status: 'pending',
