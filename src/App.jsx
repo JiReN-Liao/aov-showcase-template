@@ -172,9 +172,8 @@ function Header({ settings, isAdmin, page, onLogout }) {
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-800 bg-black/95 backdrop-blur">
       <div className="relative mx-auto flex h-[72px] max-w-[1400px] items-center justify-between gap-5 px-4 sm:px-6">
-        <a href="#/" className="flex min-w-0 items-center gap-2.5" aria-label={settings.siteName || defaultSettings.siteName}>
-          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded border border-zinc-700 bg-zinc-950 p-2" aria-hidden="true"><img src="/zhu-logo.svg" alt="" className="h-full w-full object-contain" /></span>
-          <span className="truncate text-base font-black text-white sm:text-lg">{settings.siteName || defaultSettings.siteName}</span>
+        <a href="#/" className="flex min-w-0 items-center" aria-label={settings.siteName || defaultSettings.siteName}>
+          <img src="/zhu-logo.svg" alt={settings.siteName || defaultSettings.siteName} className="h-9 w-auto max-w-[11.5rem] object-contain sm:h-11 sm:max-w-[13rem]" />
         </a>
         <nav aria-label="主要導覽" className="absolute inset-y-0 left-1/2 hidden -translate-x-1/2 items-stretch md:flex">
           <NavLink href="#/">首頁</NavLink>
@@ -548,10 +547,7 @@ function StoreFooter({ settings }) {
   return (
     <footer id="contact" className="mt-10 border-t border-zinc-800 py-8 sm:mt-14 sm:py-10">
       <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
-        <div className="flex items-center gap-4">
-          <span className="inline-flex h-20 w-20 shrink-0 items-center justify-center rounded border border-zinc-700 bg-zinc-950 p-4 sm:h-24 sm:w-24" aria-hidden="true"><img src="/zhu-logo.svg" alt="" className="h-full w-full object-contain" /></span>
-          <div><p className="font-black text-white">Zhuの小舖</p><p className="mt-1 text-xs text-zinc-500">傳說對決帳號展示</p></div>
-        </div>
+        <img src="/zhu-logo.svg" alt="Zhuの小舖" className="h-12 w-auto max-w-[15rem] object-contain sm:h-14 sm:max-w-[18rem]" />
         <div className="text-center sm:text-right">
           <p className="mb-2 text-xs font-black tracking-[0.15em] text-zinc-500">CONTACT</p>
           <div className="flex items-center gap-2">
