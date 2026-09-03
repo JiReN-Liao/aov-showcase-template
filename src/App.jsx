@@ -50,6 +50,7 @@ import {
 } from './storage'
 import { createVisualHash } from './image-similarity'
 import { isTodayStock, publishedTimestamp } from './product-freshness'
+import { compareAdminProductsNewestFirst, nextProductSortOrder } from './product-order'
 import BlurText from './components/BlurText'
 import AccountCarousel from './components/AccountCarousel'
 import DynamicVeil from './components/DynamicVeil'
@@ -808,6 +809,7 @@ function AdminPage({ products, settings, setProducts, adminToken, cloudError, cl
     input.value = ''
     if (!files.length || activeUploadBatch) return
     const batchId = crypto.randomUUID()
+    const firstSortOrder = nextProductSortOrder(products)
     const jobs = await Promise.all(files.map(async (file, index) => {
       const clientItemId = crypto.randomUUID()
       return {
@@ -818,7 +820,7 @@ function AdminPage({ products, settings, setProducts, adminToken, cloudError, cl
         name: file.name,
         total: file.size,
         loaded: 0,
-        sortOrder: products.length + index + 1,
+        sortOrder: firstSortOrder + index,
         status: 'registering',
         registered: false,
         error: '',
@@ -1242,7 +1244,7 @@ function AdminPage({ products, settings, setProducts, adminToken, cloudError, cl
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800">
-              {products.slice().sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0)).map((product) => (
+              {products.slice().sort(compareAdminProductsNewestFirst).map((product) => (
                 <AdminRow key={product.id} product={product} selected={selectedIds.has(product.id)} toggleSelected={toggleSelected} updateProduct={updateProduct} removeProduct={removeProduct} openPreview={setPreviewProduct} recognizePrice={recognizeOneProduct} recognizing={recognizingProductId === product.id} recognitionDisabled={isRecognizing || Boolean(recognizingProductId)} clock={clock} />
               ))}
             </tbody>

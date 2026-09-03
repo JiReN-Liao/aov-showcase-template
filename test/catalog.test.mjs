@@ -1,6 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { getPublicProducts, normalizeProductInput, parseSettings } from '../functions/_lib/products.js'
+import { getAdminProducts, getPublicProducts, normalizeProductInput, parseSettings } from '../functions/_lib/products.js'
+
+test('admin catalog query returns newest sort order first', async () => {
+  let query = ''
+  const products = await getAdminProducts({ DB: { prepare(value) { query = value; return { all: async () => ({ results: [] }) } } } })
+  assert.deepEqual(products, [])
+  assert.match(query, /ORDER BY sort_order DESC, created_at DESC, code DESC/)
+})
 
 test('public catalog query filters statuses and does not select notes', async () => {
   let query = ''
@@ -9,6 +16,7 @@ test('public catalog query filters statuses and does not select notes', async ()
   assert.match(query, /status = 'available'/)
   assert.match(query, /\bpublished_at\b/)
   assert.doesNotMatch(query, /\bnote\b/)
+  assert.match(query, /ORDER BY sort_order ASC, code ASC/)
 })
 
 test('product validation accepts only known product statuses', () => {

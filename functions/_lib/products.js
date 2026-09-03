@@ -57,7 +57,7 @@ export async function getSettings(env) {
 }
 
 export async function getAdminProducts(env) {
-  const result = await env.DB.prepare('SELECT * FROM products WHERE deleted_at IS NULL ORDER BY sort_order ASC, code ASC').all()
+  const result = await env.DB.prepare('SELECT * FROM products WHERE deleted_at IS NULL ORDER BY sort_order DESC, created_at DESC, code DESC').all()
   return (result.results || []).map((row) => mapProduct(row))
 }
 
