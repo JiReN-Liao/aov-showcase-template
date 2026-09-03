@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title">
+  <title>Zhuの小舖 logo</title>
   <rect width="96" height="96" rx="18" fill="#09090b"/>
   <path d="M16 29 48 12l32 17v48H16V29Z" fill="#fafafa" fill-opacity=".06" stroke="#fafafa" stroke-width="4"/>
   <path d="M24 31h48L24 65h48" fill="none" stroke="#fafafa" stroke-width="8" stroke-linecap="square" stroke-linejoin="miter"/>

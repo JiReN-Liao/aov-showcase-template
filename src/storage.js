@@ -1,5 +1,5 @@
 export const defaultSettings = {
-  siteName: 'AOV Account Showcase',
+  siteName: 'Zhuの小舖',
   adminUsers: [],
   contactMethods: [
     { id: 'line', label: 'LINE', url: '' },

@@ -9,7 +9,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
-  Gamepad2,
   ImagePlus,
   LoaderCircle,
   LogOut,
@@ -174,7 +173,7 @@ function Header({ settings, isAdmin, page, onLogout }) {
     <header className="sticky top-0 z-40 border-b border-zinc-800 bg-black/95 backdrop-blur">
       <div className="relative mx-auto flex h-[72px] max-w-[1400px] items-center justify-between gap-5 px-4 sm:px-6">
         <a href="#/" className="flex min-w-0 items-center gap-2.5" aria-label={settings.siteName || defaultSettings.siteName}>
-          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded border border-zinc-700 text-white" aria-hidden="true"><Gamepad2 size={23} strokeWidth={1.7} /></span>
+          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded border border-zinc-700 bg-zinc-950 p-2" aria-hidden="true"><img src="/zhu-logo.svg" alt="" className="h-full w-full object-contain" /></span>
           <span className="truncate text-base font-black text-white sm:text-lg">{settings.siteName || defaultSettings.siteName}</span>
         </a>
         <nav aria-label="主要導覽" className="absolute inset-y-0 left-1/2 hidden -translate-x-1/2 items-stretch md:flex">
@@ -336,7 +335,7 @@ function BackgroundPreviewPage() {
               <div className="absolute inset-0 bg-black/10" />
               <div className="relative flex h-full flex-col items-center justify-center px-6 text-center">
                 <p className="mb-4 rounded-full border border-zinc-500/80 bg-black/45 px-3 py-1.5 text-[10px] font-black tracking-[0.2em] text-zinc-200">AOV · 現貨帳號即時展示</p>
-                <h2 className="text-4xl font-black text-white drop-shadow-2xl sm:text-6xl">AOV Account Showcase</h2>
+                <h2 className="text-4xl font-black text-white drop-shadow-2xl sm:text-6xl">Zhuの小舖</h2>
                 <p className="mt-2 text-xl font-black text-zinc-100 sm:text-3xl">傳說對決帳號專門店</p>
                 <div className="mt-7 rounded bg-white px-5 py-3 text-sm font-black text-black">瀏覽帳號</div>
               </div>
@@ -550,8 +549,8 @@ function StoreFooter({ settings }) {
     <footer id="contact" className="mt-10 border-t border-zinc-800 py-8 sm:mt-14 sm:py-10">
       <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
         <div className="flex items-center gap-4">
-          <span className="inline-flex h-20 w-20 shrink-0 items-center justify-center rounded border border-zinc-700 text-white sm:h-24 sm:w-24" aria-hidden="true"><Gamepad2 size={38} strokeWidth={1.5} /></span>
-          <div><p className="font-black text-white">AOV Account Showcase</p><p className="mt-1 text-xs text-zinc-500">傳說對決帳號展示</p></div>
+          <span className="inline-flex h-20 w-20 shrink-0 items-center justify-center rounded border border-zinc-700 bg-zinc-950 p-4 sm:h-24 sm:w-24" aria-hidden="true"><img src="/zhu-logo.svg" alt="" className="h-full w-full object-contain" /></span>
+          <div><p className="font-black text-white">Zhuの小舖</p><p className="mt-1 text-xs text-zinc-500">傳說對決帳號展示</p></div>
         </div>
         <div className="text-center sm:text-right">
           <p className="mb-2 text-xs font-black tracking-[0.15em] text-zinc-500">CONTACT</p>
