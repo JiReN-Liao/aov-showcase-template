@@ -5,7 +5,7 @@
 3. Apply the migration: `npx wrangler d1 migrations apply aov-shop --remote`.
 4. D1 stores image metadata, ownership, and deletion tombstones so an image key cannot be reused.
 5. Deploy normally as Cloudflare Pages. The first administrator is created at `#/admin`; passwords are stored as PBKDF2 hashes in D1 and sessions are stored as hashed tokens in D1.
-6. Store private supplier configuration in the Pages environment variable `SUPPLIERS_JSON`; use `config/suppliers.example.json` as the public schema example.
+6. The hosted site is cloud-only: it does not read local folders, supplier configuration, or a local account database.
 
 The Node CLI reads only `AOV_API_URL` and `AOV_ADMIN_TOKEN` from environment variables. For example:
 

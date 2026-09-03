@@ -15,10 +15,11 @@ python -m pip install -r scripts/price-recognition/requirements.txt
 python scripts/price-recognition/recognize_prices.py image-1.jpg image-2.png --pretty
 ```
 
-專案內建的完整圖片庫流程：
+若要掃描一個指定的圖片資料夾，可使用通用掃描工具：
 
 ```powershell
 npm run prices:setup
+$env:AOV_IMAGE_DIR = 'C:\\path\\to\\images'
 npm run prices:scan -- --workers 8
 npm run prices:classify
 ```
@@ -55,24 +56,13 @@ The command prints a JSON array with one record per image:
   prices (`140000` and `38500`). Text-only overlays such as `自開` and `貼換`
 remain in the review queue instead of being assigned a guessed price.
 
-## Supplier price styles
+## Cloud catalog workflow
 
-`npm run prices:scan` automatically loads `config/price-style-registry.json`
-when it exists. Each confirmed fingerprint is grouped by supplier and a stable
-style id such as `supplier-1-style-01`. The recognizer uses the matching
-supplier's measured overlay position and size as a ranking hint; it still leaves
-low-confidence images for review.
-
-Generate or refresh the registry after reviewing an OCR report:
-
-```powershell
-npm run prices:styles -- price-recognition-report.json .sync-staging\priced-catalog.json
-```
-
-To introduce another visual style, add representative hashes to the private
-`config/price-style-overrides.json` file using the format shown in
-`config/price-style-overrides.example.json`, then rebuild the registry. Existing
-sample assignments are preserved between rebuilds.
+This utility is optional and only produces a review report from images supplied
+by the operator. It does not connect to a local account database, local folders,
+or the hosted catalog. After manual review, `npm run prices:fingerprints`
+can generate generic SHA-256 price fingerprints for an administrator to apply
+to the cloud D1 database.
 
 Use `--text '價格 888'` to exercise only the candidate-ranking stage without
 installing OCR dependencies.

@@ -8,13 +8,12 @@ export async function onRequestPost({ request, env, waitUntil }) {
 
   const active = await env.DB.prepare('SELECT image_key FROM products WHERE deleted_at IS NULL').all()
   const imageKeys = [...new Set((active.results || []).map((row) => row.image_key).filter(Boolean))]
-  if (!imageKeys.length) return json({ ok: true, deleted: 0, imagesQueued: 0 })
+  if (!imageKeys.length) return json({ ok: true, deleted: 0, imagesDeleted: 0 })
 
   const now = new Date().toISOString()
   try {
     await env.DB.batch([
       env.DB.prepare('UPDATE image_objects SET deleted_at = ?1 WHERE key IN (SELECT image_key FROM products WHERE deleted_at IS NULL) AND deleted_at IS NULL').bind(now),
-      env.DB.prepare('UPDATE sync_items SET deleted_at = ?1, updated_at = ?1 WHERE product_id IN (SELECT id FROM products WHERE deleted_at IS NULL) AND deleted_at IS NULL').bind(now),
       env.DB.prepare("UPDATE products SET deleted_at = ?1, status = 'hidden', updated_at = ?1, version = version + 1 WHERE deleted_at IS NULL").bind(now),
     ])
   } catch {
@@ -33,5 +32,5 @@ export async function onRequestPost({ request, env, waitUntil }) {
   if (typeof waitUntil === 'function') waitUntil(cleanup)
   else await cleanup
 
-  return json({ ok: true, deleted: active.results?.length || 0, imagesQueued: imageKeys.length })
+  return json({ ok: true, deleted: active.results?.length || 0, imagesDeleted: imageKeys.length })
 }

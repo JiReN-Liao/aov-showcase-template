@@ -48,18 +48,6 @@ export function listAdminCatalog(token) {
   return requestJson('/api/admin/catalog', { headers: { Authorization: `Bearer ${token}` } })
 }
 
-export function listSuppliers(token) {
-  return requestJson('/api/admin/suppliers', { headers: { Authorization: `Bearer ${token}` } })
-}
-
-export function linkSyncItem(item, token) {
-  return requestJson('/api/admin/sync/items', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify(item),
-  })
-}
-
 export function matchProductsByImageHashes(hashes, token) {
   return requestJson('/api/admin/products/match-images', {
     method: 'POST',

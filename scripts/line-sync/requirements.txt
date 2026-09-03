@@ -1,2 +1,0 @@
-Pillow>=12.3,<13
-wgcapture==0.1.2

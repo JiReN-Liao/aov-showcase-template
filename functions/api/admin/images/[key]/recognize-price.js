@@ -17,7 +17,7 @@ export async function onRequestPost({ request, params, env }) {
   const image = await env.AOV_STORE.get(`image:${key}`, 'arrayBuffer')
   if (!image) return errorResponse('Image not found.', 404, 'IMAGE_NOT_FOUND')
   const hash = await sha256Hex(image)
-  const fingerprint = await env.DB.prepare('SELECT price, supplier_id, style_id FROM price_fingerprints WHERE sha256 = ?1').bind(hash).first()
+  const fingerprint = await env.DB.prepare('SELECT price FROM price_fingerprints WHERE sha256 = ?1').bind(hash).first()
   const price = fingerprint?.price == null ? null : Number(fingerprint.price)
   if (!Number.isInteger(price) || price <= 0) return json({ ok: true, recognized: false, price: null, reason: 'UNKNOWN_IMAGE' })
 
@@ -26,9 +26,9 @@ export async function onRequestPost({ request, params, env }) {
     'UPDATE products SET price = ?1, updated_at = ?2, version = version + 1 WHERE id = ?3 AND version = ?4 AND deleted_at IS NULL',
   ).bind(price, now, product.id, product.version).run()
   if (Number(result.meta?.changes || 0) !== 1) return errorResponse('Product changed while recognizing its price.', 409, 'VERSION_CONFLICT')
-  await writeAudit(env, { actorId: auth.id, action: 'product.price_recognized', entityType: 'product', entityId: product.id, versionBefore: product.version, versionAfter: product.version + 1, metadata: { price, source: 'sha256_fingerprint', supplierId: fingerprint.supplier_id || null, styleId: fingerprint.style_id || null } })
+  await writeAudit(env, { actorId: auth.id, action: 'product.price_recognized', entityType: 'product', entityId: product.id, versionBefore: product.version, versionAfter: product.version + 1, metadata: { price, source: 'sha256_fingerprint' } })
   const updated = await env.DB.prepare('SELECT * FROM products WHERE id = ?1').bind(product.id).first()
-  return json({ ok: true, recognized: true, price, supplierId: fingerprint.supplier_id || null, styleId: fingerprint.style_id || null, product: mapProduct(updated) })
+  return json({ ok: true, recognized: true, price, product: mapProduct(updated) })
 }
 
 export function parseRecognizedPrice(value) {

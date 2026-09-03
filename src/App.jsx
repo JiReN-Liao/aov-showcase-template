@@ -31,9 +31,7 @@ import {
   loadProducts,
   loadSettings,
   hashImageFile,
-  linkSyncItem,
   listAdminCatalog,
-  listSuppliers,
   listVisualHashes,
   loginAdmin,
   matchProductsByImages,
@@ -76,7 +74,7 @@ export default function App() {
   const [settings, setSettingsState] = useState(() => loadSettings())
   const [route, setRoute] = useState(() => parseRoute(window.location.hash))
   const [adminToken, setAdminToken] = useState(() => sessionStorage.getItem(ADMIN_SESSION_KEY) || '')
-  const [syncError, setSyncError] = useState('')
+  const [cloudError, setCloudError] = useState('')
   const isAdmin = Boolean(adminToken)
 
   useEffect(() => {
@@ -91,7 +89,7 @@ export default function App() {
         if (Array.isArray(catalog.products)) setProductsState(catalog.products)
         if (catalog.settings) setSettingsState((current) => ({ ...current, ...catalog.settings }))
       })
-      .catch((caught) => setSyncError(caught.message || '無法載入雲端商品，請稍後重新整理。'))
+      .catch((caught) => setCloudError(caught.message || '無法載入雲端商品，請稍後重新整理。'))
   }, [])
 
   useEffect(() => {
@@ -106,7 +104,7 @@ export default function App() {
           hasAdminAccount: true,
         }))
       })
-      .catch((caught) => setSyncError(caught.message || '管理資料載入失敗，請重新登入。'))
+      .catch((caught) => setCloudError(caught.message || '管理資料載入失敗，請重新登入。'))
   }, [adminToken])
 
   const setProducts = (next) => {
@@ -123,7 +121,7 @@ export default function App() {
     })
   }
 
-  const pageProps = { products, settings, setProducts, setSettings, syncError }
+  const pageProps = { products, settings, setProducts, setSettings, cloudError }
   const loginAdminSession = (token) => {
     sessionStorage.setItem(ADMIN_SESSION_KEY, token)
     setAdminToken(token)
@@ -677,7 +675,7 @@ function DetailPage({ products, settings, productId }) {
   )
 }
 
-function AdminPage({ products, settings, setProducts, adminToken, syncError }) {
+function AdminPage({ products, settings, setProducts, adminToken, cloudError }) {
   const [message, setMessage] = useState('')
   const [previewProduct, setPreviewProduct] = useState(null)
   const [uploads, setUploads] = useState([])
@@ -687,8 +685,6 @@ function AdminPage({ products, settings, setProducts, adminToken, syncError }) {
   const [recognizingProductId, setRecognizingProductId] = useState('')
   const [selectedIds, setSelectedIds] = useState(() => new Set())
   const [isDeletingSelected, setIsDeletingSelected] = useState(false)
-  const [suppliers, setSuppliers] = useState([])
-  const [uploadSupplierId, setUploadSupplierId] = useState('')
   const [deleteImageMatches, setDeleteImageMatches] = useState([])
   const [isMatchingDeleteImages, setIsMatchingDeleteImages] = useState(false)
   const [isDeletingImageMatches, setIsDeletingImageMatches] = useState(false)
@@ -698,14 +694,6 @@ function AdminPage({ products, settings, setProducts, adminToken, syncError }) {
   const cancelledUploadBatches = useRef(new Set())
 
   products.forEach((product) => versions.current.set(product.id, product.version || 1))
-
-  useEffect(() => {
-    listSuppliers(adminToken)
-      .then((result) => {
-        setSuppliers(result.suppliers || [])
-      })
-      .catch((error) => setMessage(error.message || '無法載入供應商清單。'))
-  }, [adminToken])
 
   const queueProductOperation = (id, operation, patch = {}) => {
     const previousProduct = products.find((product) => product.id === id)
@@ -758,7 +746,6 @@ function AdminPage({ products, settings, setProducts, adminToken, syncError }) {
             signal: controller.signal,
             onProgress: (loaded, total) => patchUpload(job.clientItemId, { loaded, total }),
           })
-          await linkSyncItem({ productId: job.product.id, supplierId: job.supplierId, origin: 'mobile', contentHash: job.contentHash, fileName: job.file.name }, adminToken)
           patchUpload(job.clientItemId, { status: 'recognizing', loaded: job.file.size, total: job.file.size })
           try {
             const recognition = await recognizeImagePrice(job.imageKey, adminToken)
@@ -794,7 +781,7 @@ function AdminPage({ products, settings, setProducts, adminToken, syncError }) {
     const input = event.target
     const files = Array.from(input.files || []).filter((file) => file.type.startsWith('image/'))
     input.value = ''
-    if (!files.length || activeUploadBatch || !uploadSupplierId) return
+    if (!files.length || activeUploadBatch) return
     const batchId = crypto.randomUUID()
     const jobs = await Promise.all(files.map(async (file, index) => {
       const clientItemId = crypto.randomUUID()
@@ -803,8 +790,6 @@ function AdminPage({ products, settings, setProducts, adminToken, syncError }) {
         clientItemId,
         imageKey: `img-${batchId}-${clientItemId}`,
         file,
-        supplierId: uploadSupplierId,
-        contentHash: await hashImageFile(file),
         name: file.name,
         total: file.size,
         loaded: 0,
@@ -995,7 +980,7 @@ function AdminPage({ products, settings, setProducts, adminToken, syncError }) {
   }
 
   const removeProduct = async (product) => {
-    if (!confirm(`確定刪除 ${product.code}？網站會立即移除；若商品已建立同步關聯，本機對應圖片會在下次同步時刪除。`)) return
+    if (!confirm(`確定刪除 ${product.code}？網站會立即移除雲端商品與圖片。`)) return
     try {
       await softDeleteProduct(product.id, versions.current.get(product.id) || product.version || 1, adminToken)
       await deleteImage(product.imageKey, adminToken)
@@ -1004,7 +989,7 @@ function AdminPage({ products, settings, setProducts, adminToken, syncError }) {
       return
     }
     setProducts((current) => current.filter((item) => item.id !== product.id))
-    setMessage(`已刪除 ${product.code}；已建立同步關聯的本機圖片會於下次同步時刪除。`)
+    setMessage(`已刪除 ${product.code} 的雲端商品與圖片。`)
   }
 
   const clearAll = async () => {
@@ -1013,14 +998,14 @@ function AdminPage({ products, settings, setProducts, adminToken, syncError }) {
       setMessage('目前沒有商品需要清空。')
       return
     }
-    if (!confirm(`確定清空全部 ${products.length} 筆現貨？網站會立即清空；已建立同步關聯的本機圖片會在下次同步時刪除。舊商品的本機圖片需手動清理。此操作無法復原。`)) return
+    if (!confirm(`確定清空全部 ${products.length} 筆商品？網站會立即清空雲端商品與圖片。此操作無法復原。`)) return
     setIsClearing(true)
     setMessage(`正在刪除 ${products.length} 筆商品，請勿關閉或重複操作…`)
     try {
       const result = await clearAllProducts(adminToken)
       setProducts([])
       setUploads([])
-      setMessage(`已刪除 ${result.deleted ?? products.length} 筆商品；已建立同步關聯的本機圖片會於下次同步時刪除。`)
+      setMessage(`已刪除 ${result.deleted ?? products.length} 筆雲端商品與圖片。`)
     } catch (caught) {
       setMessage(caught.message || '清空失敗，請重新整理確認剩餘商品。')
     } finally {
@@ -1031,7 +1016,7 @@ function AdminPage({ products, settings, setProducts, adminToken, syncError }) {
   const deleteSelected = async () => {
     const ids = [...selectedIds]
     if (!ids.length || isDeletingSelected) return
-    if (!confirm(`確定刪除已選取的 ${ids.length} 筆商品？網站會立即移除；已建立同步關聯的本機圖片會在下次同步時刪除。`)) return
+    if (!confirm(`確定刪除已選取的 ${ids.length} 筆商品？網站會立即移除雲端商品與圖片。`)) return
     setIsDeletingSelected(true)
     setMessage(`正在刪除 ${ids.length} 筆已選商品…`)
     try {
@@ -1039,7 +1024,7 @@ function AdminPage({ products, settings, setProducts, adminToken, syncError }) {
       const deleted = new Set(ids)
       setProducts((current) => current.filter((product) => !deleted.has(product.id)))
       setSelectedIds(new Set())
-      setMessage(`已批量刪除 ${result.deleted} 筆商品；已建立同步關聯的本機圖片會於下次同步時刪除。`)
+      setMessage(`已批量刪除 ${result.deleted} 筆雲端商品與圖片。`)
     } catch (caught) {
       setMessage(caught.message || '批量刪除失敗，請重新整理後再試。')
     } finally {
@@ -1102,7 +1087,7 @@ function AdminPage({ products, settings, setProducts, adminToken, syncError }) {
     const matched = deleteImageMatches.filter((item) => item.products.length)
     const ids = [...new Set(matched.flatMap((item) => item.products.map((product) => product.id)))]
     if (!ids.length || isDeletingImageMatches) return
-    if (!confirm(`確定刪除配對成功的 ${ids.length} 筆商品？網站會立即下架，本機圖片將於電腦下次同步時刪除。`)) return
+    if (!confirm(`確定刪除配對成功的 ${ids.length} 筆商品？網站會立即下架並刪除雲端圖片。`)) return
     setIsDeletingImageMatches(true)
     setMessage(`正在刪除 ${ids.length} 筆配對商品…`)
     try {
@@ -1110,7 +1095,7 @@ function AdminPage({ products, settings, setProducts, adminToken, syncError }) {
       const deleted = new Set(ids)
       setProducts((current) => current.filter((product) => !deleted.has(product.id)))
       clearDeleteImageMatches()
-      setMessage(`已從網站刪除 ${result.deleted} 筆商品；本機刪除工作已排入同步佇列。`)
+      setMessage(`已從網站刪除 ${result.deleted} 筆雲端商品與圖片。`)
     } catch (caught) {
       setMessage(caught.message || '以圖刪除失敗，請重新整理後再試。')
     } finally {
@@ -1136,16 +1121,9 @@ function AdminPage({ products, settings, setProducts, adminToken, syncError }) {
             <p className="mt-1 text-xs text-zinc-500">{products.length} 筆商品 · 批量上傳會先建立草稿</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-          <label className="relative block">
-            <select aria-label="選擇上傳供應商" className="h-9 min-w-40 appearance-none rounded border border-zinc-700 bg-zinc-950 pl-3 pr-8 text-sm font-bold text-zinc-200" value={uploadSupplierId} onChange={(event) => setUploadSupplierId(event.target.value)}>
-              <option value="">選擇供應商</option>
-              {suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
-          </label>
           <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded bg-zinc-100 px-3 text-sm font-black text-zinc-950 transition hover:bg-white">
             <ImagePlus size={16} />批量上傳
-            <input className="hidden" type="file" accept="image/*" multiple disabled={Boolean(activeUploadBatch) || !uploadSupplierId} onChange={handleBatchUpload} />
+            <input className="hidden" type="file" accept="image/*" multiple disabled={Boolean(activeUploadBatch)} onChange={handleBatchUpload} />
           </label>
           <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded border border-zinc-500 px-3 text-sm font-bold text-zinc-100 transition hover:border-zinc-200">
             {isMatchingDeleteImages ? <LoaderCircle size={16} className="animate-spin" /> : <Trash2 size={16} />}以圖刪除
@@ -1169,7 +1147,7 @@ function AdminPage({ products, settings, setProducts, adminToken, syncError }) {
       </section>
 
       {message && <p className="mb-3 border-l-2 border-zinc-300 bg-zinc-900 px-3 py-2 text-sm text-zinc-200">{message}</p>}
-      {syncError && <p className="mb-3 border-l-2 border-zinc-500 bg-zinc-900 px-3 py-2 text-sm text-zinc-300">同步失敗：{syncError}</p>}
+      {cloudError && <p className="mb-3 border-l-2 border-zinc-500 bg-zinc-900 px-3 py-2 text-sm text-zinc-300">雲端載入失敗：{cloudError}</p>}
       {!hasContactMethods(settings) && <p className="mb-3 border-l-2 border-zinc-600 px-3 py-2 text-sm text-zinc-400">尚未設定聯絡方式，請到設定頁填入 LINE、Facebook 或 Instagram 連結。</p>}
 
       {deleteImageMatches.length > 0 && (

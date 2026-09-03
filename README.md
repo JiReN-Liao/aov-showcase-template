@@ -1,6 +1,6 @@
 # Zhuの小舖
 
-一個以實際營運需求打造的《傳說對決》帳號展示賣場。買家可以瀏覽、搜尋、依價格篩選並查看完整帳號圖片；管理端則提供批量上傳、價格辨識、上架、刪除與本機圖片庫同步。
+一個以實際營運需求打造的《傳說對決》帳號展示賣場。買家可以瀏覽、搜尋、依價格篩選並查看完整帳號圖片；管理端則提供批量上傳、價格辨識、上架與刪除。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-white.svg)](LICENSE)
 
@@ -13,9 +13,10 @@
 - **可靠批量上傳**：分批註冊、限制並行數、失敗重試與進度回饋，避免大量圖片長時間卡住。
 - **跨裝置管理**：商品資料存於 D1、圖片存於 KV，手機與電腦共用同一份狀態。
 - **安全以圖刪除**：先比對 SHA-256，再以感知指紋容忍壓縮與縮放；只有唯一可信結果才能刪除。
-- **本機同步 Agent**：支援網站與本機供應商資料夾雙向同步，以及網站刪除後的本機刪除佇列。
-- **離線價格辨識**：RapidOCR + OpenCV，多種影像前處理與供應商樣式提示；低信心結果保留人工確認。
-- **隱私優先**：管理員密碼使用 PBKDF2 加鹽雜湊；私人路徑、供應商、憑證、OCR 報告與商品資料不進 Git。
+- **通用價格辨識**：RapidOCR + OpenCV，多種影像前處理；低信心結果保留人工確認。
+- **雲端單一資料來源**：商品資料只存 Cloudflare D1，商品圖片只存 Cloudflare KV；不同裝置共用同一份狀態。
+- **瀏覽器不留商品資料**：瀏覽器只保留暫時登入 session 與篩選畫面狀態，不建立商品資料庫或圖片副本。
+- **隱私優先**：管理員密碼使用 PBKDF2 加鹽雜湊；本機路徑、帳號資料、憑證、OCR 報告與正式商品資料不進 Git。
 
 ## 系統架構
 
@@ -26,9 +27,7 @@ flowchart LR
   UI --> Functions[Cloudflare Pages Functions]
   Functions --> D1[(Cloudflare D1)]
   Functions --> KV[(Workers KV 圖片)]
-  Agent[Windows Sync Agent] --> Functions
-  Library[本機圖片庫] <--> Agent
-  OCR[RapidOCR / OpenCV] --> Agent
+  OCR[RapidOCR / OpenCV] --> Admin[管理員人工確認]
 ```
 
 ## 技術棧
@@ -64,7 +63,7 @@ npm run build
 1. 複製 `wrangler.example.toml` 為 `wrangler.toml`。
 2. 建立自己的 D1 與 KV，填入資源 ID。
 3. 套用 migrations。
-4. 設定私有供應商資料與管理員帳號。
+4. 在 `/admin` 建立管理員帳號並設定聯絡方式。
 5. 建置並部署 Pages。
 
 ```bash
@@ -73,8 +72,6 @@ npm run build
 npx wrangler pages deploy dist --project-name YOUR_PROJECT
 ```
 
-供應商名稱不寫在原始碼中。部署時以 Cloudflare 環境變數 `SUPPLIERS_JSON` 提供，格式可參考 `config/suppliers.example.json`。
-
 ## 自動化工具
 
 ```bash
@@ -82,11 +79,9 @@ npx wrangler pages deploy dist --project-name YOUR_PROJECT
 npm run admin -- list
 npm run admin -- status --id PRODUCT_ID --status available
 
-# 同步本機圖片庫
-npm run sync -- --dry-run
-
 # 建立離線 OCR 環境並掃描
 npm run prices:setup
+$env:AOV_IMAGE_DIR = 'C:\\path\\to\\images'
 npm run prices:scan -- --workers 4
 ```
 
@@ -99,13 +94,12 @@ src/                         前台、詳情頁、後台與互動元件
 functions/api/               Cloudflare Pages Functions API
 functions/_lib/              驗證、稽核、商品與圖片共用邏輯
 migrations/                  D1 schema 與版本遷移
-scripts/sync-agent.mjs       本機圖片庫同步 Agent
 scripts/price-recognition/   離線 OCR 與價格候選排序
-test/                        API、同步、辨識與圖片比對測試
+test/                        API、辨識與圖片比對測試
 ```
 
 ## 隱私與授權
 
-公開倉庫不包含正式商品、買家資料、供應商真名、本機路徑、Cloudflare 資源 ID、管理員帳密或同步狀態。安全問題請依 [SECURITY.md](SECURITY.md) 私下回報。
+公開倉庫不包含正式商品、買家資料、本機路徑、Cloudflare 資源 ID、管理員帳密或同步狀態。現行網站不連接本機資料夾、供應商分類或本機帳號資料庫；安全問題請依 [SECURITY.md](SECURITY.md) 私下回報。
 
 專案原始碼採 [MIT License](LICENSE)。第三方視覺概念與影片素材授權詳見 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

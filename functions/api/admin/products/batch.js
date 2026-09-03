@@ -56,7 +56,7 @@ export async function onRequestDelete({ request, env, waitUntil }) {
 
   const placeholders = ids.map((_, index) => `?${index + 1}`).join(',')
   const active = (await env.DB.prepare(`SELECT id, image_key FROM products WHERE id IN (${placeholders}) AND deleted_at IS NULL`).bind(...ids).all()).results || []
-  if (!active.length) return json({ ok: true, deleted: 0, imagesQueued: 0 })
+  if (!active.length) return json({ ok: true, deleted: 0, imagesDeleted: 0 })
   const activeIds = active.map((row) => row.id)
   const imageKeys = [...new Set(active.map((row) => row.image_key).filter(Boolean))]
   const activePlaceholders = activeIds.map((_, index) => `?${index + 2}`).join(',')
@@ -64,7 +64,6 @@ export async function onRequestDelete({ request, env, waitUntil }) {
 
   await env.DB.batch([
     env.DB.prepare(`UPDATE image_objects SET deleted_at = ?1 WHERE key IN (SELECT image_key FROM products WHERE id IN (${activePlaceholders})) AND deleted_at IS NULL`).bind(now, ...activeIds),
-    env.DB.prepare(`UPDATE sync_items SET deleted_at = ?1, updated_at = ?1 WHERE product_id IN (${activePlaceholders}) AND deleted_at IS NULL`).bind(now, ...activeIds),
     env.DB.prepare(`UPDATE products SET deleted_at = ?1, status = 'hidden', updated_at = ?1, version = version + 1 WHERE id IN (${activePlaceholders}) AND deleted_at IS NULL`).bind(now, ...activeIds),
   ])
   await writeAudit(env, { actorId: auth.id, action: 'products.batch_delete', entityType: 'product_batch', entityId: 'selected', metadata: { count: active.length, images: imageKeys.length } })
@@ -72,5 +71,5 @@ export async function onRequestDelete({ request, env, waitUntil }) {
   const cleanup = Promise.allSettled(imageKeys.map((key) => env.AOV_STORE.delete(`image:${key}`)))
   if (typeof waitUntil === 'function') waitUntil(cleanup)
   else await cleanup
-  return json({ ok: true, deleted: active.length, imagesQueued: imageKeys.length })
+  return json({ ok: true, deleted: active.length, imagesDeleted: imageKeys.length })
 }

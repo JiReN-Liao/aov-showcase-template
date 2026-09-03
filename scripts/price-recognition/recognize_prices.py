@@ -135,30 +135,7 @@ def token_candidates(tokens: Iterable[OcrToken]) -> list[dict[str, Any]]:
     return candidates
 
 
-def style_similarity(candidate: dict[str, Any], styles: list[dict[str, Any]]) -> tuple[str | None, float]:
-    geometry = candidate.get("geometry")
-    if not geometry:
-        return None, 0.0
-    best_id: str | None = None
-    best_similarity = 0.0
-    for style in styles:
-        signature = style.get("signature", {})
-        target = signature.get("geometry")
-        if not target or int(signature.get("measuredSamples", 0)) < 3:
-            continue
-        distance = math.sqrt(
-            ((geometry["x"] - target["x"]) / 0.25) ** 2
-            + ((geometry["y"] - target["y"]) / 0.20) ** 2
-            + ((geometry["height"] - target["height"]) / 0.10) ** 2
-        )
-        similarity = math.exp(-(distance ** 2))
-        if similarity > best_similarity:
-            best_id = style.get("id")
-            best_similarity = similarity
-    return best_id, best_similarity
-
-
-def merge_candidates(candidates: Iterable[dict[str, Any]], styles: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+def merge_candidates(candidates: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
     best_by_value: dict[int, dict[str, Any]] = {}
     variants_by_value: dict[int, set[str]] = {}
     for candidate in candidates:
@@ -169,16 +146,11 @@ def merge_candidates(candidates: Iterable[dict[str, Any]], styles: list[dict[str
     for value, candidate in best_by_value.items():
         candidate["variantCount"] = len(variants_by_value[value])
         candidate["score"] = round(clamp(candidate["score"] + min(0.12, 0.03 * (candidate["variantCount"] - 1))), 3)
-        style_id, similarity = style_similarity(candidate, styles or [])
-        if style_id and similarity >= 0.20:
-            candidate["styleId"] = style_id
-            candidate["styleSimilarity"] = round(similarity, 3)
-            candidate["score"] = round(clamp(candidate["score"] + 0.12 * similarity), 3)
     return sorted(best_by_value.values(), key=lambda candidate: (-candidate["score"], candidate["value"]))
 
 
-def result_from_tokens(image: str, tokens: Iterable[OcrToken], min_confidence: float, styles: list[dict[str, Any]] | None = None) -> dict[str, Any]:
-    candidates = merge_candidates(token_candidates(tokens), styles)
+def result_from_tokens(image: str, tokens: Iterable[OcrToken], min_confidence: float) -> dict[str, Any]:
+    candidates = merge_candidates(token_candidates(tokens))
     if not candidates:
         return {"image": image, "price": None, "confidence": 0.0, "candidates": [], "reason": "No price-like number was found."}
 
@@ -197,7 +169,6 @@ def result_from_tokens(image: str, tokens: Iterable[OcrToken], min_confidence: f
         "price": best["value"],
         "confidence": confidence,
         "candidates": candidates,
-        "styleId": best.get("styleId"),
         "reason": f"Selected {best['value']} from {best['variant']} OCR; evidence={best['evidence']}.",
     }
 
@@ -262,7 +233,7 @@ def unpack_ocr_output(output: Any, variant: str, image_shape: tuple[int, ...]) -
     return tokens
 
 
-def recognize_image(image_path: str, min_confidence: float, styles: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+def recognize_image(image_path: str, min_confidence: float) -> dict[str, Any]:
     path = Path(image_path)
     if not path.is_file():
         return {"image": image_path, "price": None, "confidence": 0.0, "candidates": [], "reason": "Image file does not exist."}
@@ -276,36 +247,16 @@ def recognize_image(image_path: str, min_confidence: float, styles: list[dict[st
         tokens: list[OcrToken] = []
         for index, (variant, image) in enumerate(variants):
             tokens.extend(unpack_ocr_output(engine(image), variant, image.shape))
-            provisional = result_from_tokens(image_path, tokens, min_confidence, styles)
+            provisional = result_from_tokens(image_path, tokens, min_confidence)
             if index == 0 and provisional["price"] is not None and provisional["confidence"] >= 0.72:
                 return provisional
-        return result_from_tokens(image_path, tokens, min_confidence, styles)
+        return result_from_tokens(image_path, tokens, min_confidence)
     except Exception as error:  # Batch callers must receive a record for every image.
         return {"image": image_path, "price": None, "confidence": 0.0, "candidates": [], "reason": str(error)}
 
 
-def recognize_image_job(image_path: str, min_confidence: float, styles: list[dict[str, Any]] | None = None) -> dict[str, Any]:
-    return recognize_image(image_path, min_confidence, styles)
-
-
-def load_style_registry(path: str | None) -> dict[str, Any]:
-    if not path:
-        return {"suppliers": []}
-    return json.loads(Path(path).read_text(encoding="utf-8-sig"))
-
-
-def styles_for_image(image_path: str, registry: dict[str, Any]) -> list[dict[str, Any]]:
-    path_text = str(Path(image_path)).casefold()
-    hash_match = re.search(r"[a-f0-9]{64}", Path(image_path).name, re.IGNORECASE)
-    image_hash = hash_match.group(0).lower() if hash_match else None
-    for supplier in registry.get("suppliers", []):
-        styles = supplier.get("styles", [])
-        if image_hash and any(image_hash == sample.get("hash") for style in styles for sample in style.get("samples", [])):
-            return styles
-        supplier_name = str(supplier.get("supplierName", "")).casefold()
-        if supplier_name and supplier_name in path_text:
-            return styles
-    return []
+def recognize_image_job(image_path: str, min_confidence: float) -> dict[str, Any]:
+    return recognize_image(image_path, min_confidence)
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -316,7 +267,6 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--workers", type=int, default=4, help="Parallel local OCR workers (default: 4).")
     parser.add_argument("--text", action="append", default=[], help="Run candidate extraction on supplied OCR text (useful for tests).")
     parser.add_argument("--min-confidence", type=float, default=DEFAULT_MIN_CONFIDENCE, help="Confidence required to emit price (0-1).")
-    parser.add_argument("--style-registry", help="Supplier-specific price style registry JSON used to rank OCR candidates.")
     parser.add_argument("--pretty", action="store_true", help="Pretty-print JSON output.")
     args = parser.parse_args(argv)
     if not args.images and not args.text and not args.directory:
@@ -330,7 +280,6 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
-    style_registry = load_style_registry(args.style_registry)
     images = list(args.images)
     if args.directory:
         root = Path(args.directory)
@@ -338,7 +287,7 @@ def main(argv: list[str] | None = None) -> int:
         images.extend(str(path) for path in sorted(root.rglob("*")) if path.is_file() and path.suffix.lower() in supported)
     results: list[dict[str, Any]] = [None] * len(images)  # type: ignore[list-item]
     if args.workers == 1 or len(images) <= 1:
-        completed = ((index, recognize_image(image_path, args.min_confidence, styles_for_image(image_path, style_registry))) for index, image_path in enumerate(images))
+        completed = ((index, recognize_image(image_path, args.min_confidence)) for index, image_path in enumerate(images))
         for completed_count, (index, result) in enumerate(completed, start=1):
             results[index] = result
             if args.output:
@@ -346,7 +295,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"[{completed_count}/{len(images)}] {state} {Path(images[index]).name}", file=sys.stderr, flush=True)
     else:
         with ProcessPoolExecutor(max_workers=args.workers) as executor:
-            pending = {executor.submit(recognize_image_job, image_path, args.min_confidence, styles_for_image(image_path, style_registry)): index for index, image_path in enumerate(images)}
+            pending = {executor.submit(recognize_image_job, image_path, args.min_confidence): index for index, image_path in enumerate(images)}
             for completed_count, future in enumerate(as_completed(pending), start=1):
                 index = pending[future]
                 result = future.result()

@@ -56,12 +56,9 @@ export async function onRequestDelete({ request, params, env }) {
   if (!version) return errorResponse('expectedVersion or If-Match is required.', 428, 'VERSION_REQUIRED')
 
   const now = new Date().toISOString()
-  const [result] = await env.DB.batch([
-    env.DB.prepare(
-      "UPDATE products SET deleted_at = ?1, status = 'hidden', updated_at = ?1, version = version + 1 WHERE id = ?2 AND version = ?3 AND deleted_at IS NULL",
-    ).bind(now, id, version),
-    env.DB.prepare('UPDATE sync_items SET deleted_at = ?1, updated_at = ?1 WHERE product_id = ?2 AND deleted_at IS NULL').bind(now, id),
-  ])
+  const result = await env.DB.prepare(
+    "UPDATE products SET deleted_at = ?1, status = 'hidden', updated_at = ?1, version = version + 1 WHERE id = ?2 AND version = ?3 AND deleted_at IS NULL",
+  ).bind(now, id, version).run()
   if (Number(result.meta?.changes || 0) !== 1) {
     const current = await env.DB.prepare('SELECT version FROM products WHERE id = ?1').bind(id).first()
     return current ? errorResponse('Product has changed. Reload before deleting.', 409, 'VERSION_CONFLICT') : errorResponse('Product not found.', 404, 'PRODUCT_NOT_FOUND')

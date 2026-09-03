@@ -13,13 +13,12 @@ export async function onRequestPost({ request, env }) {
 
   const placeholders = hashes.map((_, index) => `?${index + 1}`).join(',')
   const rows = (await env.DB.prepare(
-    `SELECT products.*, COALESCE(sync_items.content_hash, image_objects.content_hash) AS match_hash
+    `SELECT products.*, image_objects.content_hash AS match_hash
      FROM products
      JOIN image_objects ON image_objects.key = products.image_key
        AND image_objects.deleted_at IS NULL AND image_objects.upload_status = 'ready'
-     LEFT JOIN sync_items ON sync_items.product_id = products.id AND sync_items.deleted_at IS NULL
      WHERE products.deleted_at IS NULL
-       AND (sync_items.content_hash IN (${placeholders}) OR image_objects.content_hash IN (${placeholders}))
+       AND image_objects.content_hash IN (${placeholders})
      ORDER BY products.code`,
   ).bind(...hashes).all()).results || []
 
