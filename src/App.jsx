@@ -574,7 +574,7 @@ function FloatingContacts({ settings }) {
   const methods = getContactMethods(settings).filter((method) => method.url)
   if (!methods.length) return null
   return (
-    <aside aria-label="快速聯絡" className="floating-contacts fixed bottom-4 right-3 z-30 flex flex-col gap-2 sm:bottom-6 sm:right-5">
+    <aside aria-label="快速聯絡" className="floating-contacts fixed bottom-4 right-3 z-30 hidden flex-col gap-2 sm:flex sm:bottom-6 sm:right-5">
       {methods.map((method) => {
         const brand = contactBrand(method)
         return (
