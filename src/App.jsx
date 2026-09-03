@@ -172,8 +172,9 @@ function Header({ settings, isAdmin, page, onLogout }) {
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-800 bg-black/95 backdrop-blur">
       <div className="relative mx-auto flex h-[72px] max-w-[1400px] items-center justify-between gap-5 px-4 sm:px-6">
-        <a href="#/" className="flex min-w-0 items-center" aria-label={settings.siteName || defaultSettings.siteName}>
+        <a href="#/" className="flex min-w-0 items-center gap-2.5" aria-label={settings.siteName || defaultSettings.siteName}>
           <BrandLogo alt={settings.siteName || defaultSettings.siteName} className="h-12 w-12 shrink-0 rounded-md object-cover" />
+          <span className="truncate text-base font-black text-white sm:text-lg">{settings.siteName || defaultSettings.siteName}</span>
         </a>
         <nav aria-label="主要導覽" className="absolute inset-y-0 left-1/2 hidden -translate-x-1/2 items-stretch md:flex">
           <NavLink href="#/">首頁</NavLink>
@@ -202,7 +203,7 @@ function BrandLogo({ alt, className }) {
     event.currentTarget.src = '/zhu-logo.svg'
   }
 
-  return <img src="/zhu-logo.png" alt={alt} className={className} onError={handleError} />
+  return <img src="/zhu-logo.png" alt={alt} className={`brand-logo-image ${className || ''}`} onError={handleError} />
 }
 
 function NavLink({ href, children }) {
