@@ -34,6 +34,7 @@ config/price-style-overrides.json
 .venv-sync/
 sync-agent.log
 temp/
+public/zhu-logo.png
 config/suppliers.json
 wrangler.toml
 src/assets/hero.png

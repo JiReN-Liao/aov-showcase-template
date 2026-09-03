@@ -173,7 +173,7 @@ function Header({ settings, isAdmin, page, onLogout }) {
     <header className="sticky top-0 z-40 border-b border-zinc-800 bg-black/95 backdrop-blur">
       <div className="relative mx-auto flex h-[72px] max-w-[1400px] items-center justify-between gap-5 px-4 sm:px-6">
         <a href="#/" className="flex min-w-0 items-center" aria-label={settings.siteName || defaultSettings.siteName}>
-          <img src="/zhu-logo.svg" alt={settings.siteName || defaultSettings.siteName} className="h-9 w-auto max-w-[11.5rem] object-contain sm:h-11 sm:max-w-[13rem]" />
+          <BrandLogo alt={settings.siteName || defaultSettings.siteName} className="h-12 w-12 shrink-0 rounded-md object-cover" />
         </a>
         <nav aria-label="主要導覽" className="absolute inset-y-0 left-1/2 hidden -translate-x-1/2 items-stretch md:flex">
           <NavLink href="#/">首頁</NavLink>
@@ -193,6 +193,16 @@ function Header({ settings, isAdmin, page, onLogout }) {
       </div>
     </header>
   )
+}
+
+function BrandLogo({ alt, className }) {
+  const handleError = (event) => {
+    if (event.currentTarget.dataset.fallback === 'true') return
+    event.currentTarget.dataset.fallback = 'true'
+    event.currentTarget.src = '/zhu-logo.svg'
+  }
+
+  return <img src="/zhu-logo.png" alt={alt} className={className} onError={handleError} />
 }
 
 function NavLink({ href, children }) {
@@ -547,7 +557,7 @@ function StoreFooter({ settings }) {
   return (
     <footer id="contact" className="mt-10 border-t border-zinc-800 py-8 sm:mt-14 sm:py-10">
       <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
-        <img src="/zhu-logo.svg" alt="Zhuの小舖" className="h-12 w-auto max-w-[15rem] object-contain sm:h-14 sm:max-w-[18rem]" />
+        <BrandLogo alt="Zhuの小舖" className="h-32 w-32 shrink-0 rounded-md object-cover sm:h-40 sm:w-40" />
         <div className="text-center sm:text-right">
           <p className="mb-2 text-xs font-black tracking-[0.15em] text-zinc-500">CONTACT</p>
           <div className="flex items-center gap-2">
