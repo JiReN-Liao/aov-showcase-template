@@ -1,7 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title">
   <title id="title">Zhuの小舖 logo</title>
-  <rect width="128" height="128" rx="30" fill="#09090b"/>
-  <path d="M24 46 64 22l40 24v56H24V46Z" fill="#fafafa" fill-opacity=".05" stroke="#fafafa" stroke-width="4"/>
-  <path d="M32 47h64L32 84h64" fill="none" stroke="#fafafa" stroke-width="9" stroke-linecap="square" stroke-linejoin="miter"/>
-  <path d="M30 105h68" fill="none" stroke="#fafafa" stroke-width="4" stroke-linecap="square"/>
+  <rect width="128" height="128" rx="28" fill="#09090b"/>
+  <path d="M64 12 76 30l17-10-5 27H40l-5-27 17 10 12-18Z" fill="#fafafa"/>
+  <path d="m64 20 6 10-6 10-6-10 6-10Z" fill="#09090b"/>
+  <path d="M28 49h72l-6 49-30 24-30-24-6-49Z" fill="#09090b" stroke="#fafafa" stroke-width="4" stroke-linejoin="miter"/>
+  <path d="M42 62h44L42 92h44" fill="none" stroke="#fafafa" stroke-width="8" stroke-linecap="square" stroke-linejoin="miter"/>
+  <path d="M45 101h38c4 0 7 3 8 7l-2 8c-1 3-5 4-8 1l-4-5H51l-4 5c-3 3-7 2-8-1l-2-8c1-4 4-7 8-7Z" fill="#fafafa"/>
+  <path d="M50 105v7M47 108h6M73 107h.1M80 112h.1" fill="none" stroke="#09090b" stroke-width="2.5" stroke-linecap="round"/>
 </svg>

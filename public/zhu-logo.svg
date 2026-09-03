@@ -1,14 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 128" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 120" role="img" aria-labelledby="title desc">
   <title id="title">Zhuの小舖</title>
-  <desc id="desc">Zhuの小舖的黑白幾何品牌標誌</desc>
-  <g transform="translate(8 8)">
-    <rect width="112" height="112" rx="28" fill="#09090b" stroke="#fafafa" stroke-width="3"/>
-    <path d="M24 45 56 25l32 20v49H24V45Z" fill="#fafafa" fill-opacity=".05" stroke="#fafafa" stroke-width="4"/>
-    <path d="M31 46h50L31 81h50" fill="none" stroke="#fafafa" stroke-width="8" stroke-linecap="square" stroke-linejoin="miter"/>
-    <path d="M29 99h54" fill="none" stroke="#fafafa" stroke-width="4" stroke-linecap="square"/>
+  <desc id="desc">Zhuの小舖傳說對決帳號展示</desc>
+  <g transform="translate(5 5)">
+    <rect width="110" height="110" rx="22" fill="#09090b" stroke="#fafafa" stroke-width="3"/>
+    <path d="M55 10 66 26l15-9-4 24H33l-4-24 15 9L55 10Z" fill="#fafafa"/>
+    <path d="m55 17 5 8-5 8-5-8 5-8Z" fill="#09090b"/>
+    <path d="M24 43h62l-5 43-26 21-26-21-5-43Z" fill="#09090b" stroke="#fafafa" stroke-width="4" stroke-linejoin="miter"/>
+    <path d="M36 54h38L36 80h38" fill="none" stroke="#fafafa" stroke-width="7" stroke-linecap="square" stroke-linejoin="miter"/>
+    <path d="M39 91h32" fill="none" stroke="#fafafa" stroke-width="3" stroke-linecap="square"/>
+    <path d="M39 90h32c4 0 7 3 8 7l-2 7c-1 3-5 4-7 1l-4-4H45l-4 4c-2 3-6 2-7-1l-2-7c1-4 4-7 7-7Z" fill="#fafafa"/>
+    <path d="M43 94v6M40 97h6M64 96h.1M70 101h.1" fill="none" stroke="#09090b" stroke-width="2.5" stroke-linecap="round"/>
   </g>
-  <text x="148" y="67" fill="#fafafa" font-family="Noto Sans TC, Microsoft JhengHei UI, Segoe UI, sans-serif" font-size="43" font-weight="800" letter-spacing=".4">Zhuの小舖</text>
-  <path d="M150 89h46" fill="none" stroke="#fafafa" stroke-width="3"/>
-  <path d="M204 89h12" fill="none" stroke="#71717a" stroke-width="3"/>
-  <text x="150" y="108" fill="#a1a1aa" font-family="Segoe UI, sans-serif" font-size="10" font-weight="700" letter-spacing="3.2">ACCOUNT SHOWCASE</text>
+  <text x="142" y="57" fill="#fafafa" font-family="Noto Sans TC, Microsoft JhengHei UI, Segoe UI, sans-serif" font-size="40" font-weight="900" letter-spacing=".2">Zhuの小舖</text>
+  <path d="M144 72h74" fill="none" stroke="#fafafa" stroke-width="2"/>
+  <path d="M224 72h18" fill="none" stroke="#71717a" stroke-width="2"/>
+  <text x="144" y="94" fill="#fafafa" font-family="Noto Sans TC, Microsoft JhengHei UI, Segoe UI, sans-serif" font-size="14" font-weight="700" letter-spacing="1.4">傳說對決帳號展示</text>
+  <text x="144" y="110" fill="#a1a1aa" font-family="Noto Sans TC, Microsoft JhengHei UI, Segoe UI, sans-serif" font-size="9" font-weight="700" letter-spacing="2.2">完整圖片 · 即時現貨</text>
 </svg>
